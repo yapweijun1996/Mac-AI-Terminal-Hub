@@ -2,11 +2,10 @@
 
 **Browser-based, lightweight AI CLI workspace for macOS.** / 个人 AI 远程终端控制中心
 
-> **Current status: MVP design and static UI prototype only.** No working remote shell,
-> authentication service, Cloudflare Tunnel route or live macOS integration is included in this documentation PR.
+> **Current status: local gateway implementation in progress.** It has not been deployed or exposed; no live tunnel or macOS session has been verified.
 
 - Proposed URL: `https://terminal.yapweijun1996.com` (**not claimed live**)
-- Target host: MacBook Air (macOS)
+- Target host: Mac mini (macOS)
 - Repository: **PUBLIC source code and planning**; deployed terminal: **PRIVATE owner-only access**
 - Planned agents: Codex CLI / Claude Code / Pi CLI
 - Planned stack: React + Vite / Fastify / ttyd / tmux / dedicated Cloudflare Tunnel + Access
@@ -31,7 +30,8 @@ It does not open a real shell or communicate with a Mac.
 | [Planned Repository Structure](docs/REPOSITORY-STRUCTURE.md) | Proposed future app/server layout |
 | [Implementation Plan](docs/IMPLEMENTATION-PLAN.md) | P0–P4 phases and acceptance |
 | [Test Plan](docs/TEST-PLAN.md) | Security, E2E, reconnect and mobile checks |
-| [Mac Deployment Readiness](docs/DEPLOY-MACOS.md) | MacBook Air preflight and protected rollout |
+| [Mac Deployment Readiness](docs/DEPLOY-MACOS.md) | Mac mini preflight and protected rollout |
+| [Native Terminal Prerequisites](docs/NATIVE-TERMINAL-PREREQUISITES.md) | Read-only ttyd/tmux package and host-risk assessment |
 | [Operations](docs/OPERATIONS.md) | Failure modes, availability, rollback |
 | [Agent Implementation Brief](docs/AGENT-IMPLEMENTATION-BRIEF.md) | Delegation instructions for Codex / Claude / Pi |
 | [References](docs/REFERENCES.md) | Official source links |
@@ -39,7 +39,7 @@ It does not open a real shell or communicate with a Mac.
 ## Proposed flow
 
 ```text
-Browser -> Cloudflare Access -> dedicated MacBook Air Tunnel
+Browser -> Cloudflare Access -> dedicated Mac mini Tunnel (not provisioned)
         -> 127.0.0.1:4782 (Fastify + JWT/WS security)
         -> local ttyd -> tmux -> Codex / Claude / Pi
 ```
@@ -50,10 +50,12 @@ Even with a public repository, terminal sessions, credentials and logs must stay
 
 ## Roadmap
 
-- **P0**: MacBook Air environment and permission verification
+- **P0**: Mac mini environment and permission verification
 - **P1**: Authenticated gateway, Access JWT and WS checks
 - **P2**: tmux/ttyd sessions, agent launcher, reconnect/stop
 - **P3**: Responsive dashboard, projects and real metrics
 - **P4**: Security QA, audit, launchd and rollback
 
 The owner will review and merge pull requests. No auto-merge or automatic production deployment.
+
+Gateway source and local instructions are in [apps/gateway](apps/gateway) and [docs/DEPLOY-MACOS.md](docs/DEPLOY-MACOS.md). The loopback bridge and writer lock exist in source, but native terminal E2E is pending; this project remains undeployed. Current integration verification and blockers are recorded in [docs/IMPLEMENTATION-STATUS-INTEGRATION.md](docs/IMPLEMENTATION-STATUS-INTEGRATION.md). Access JWT configuration is mandatory. Do not provision a Tunnel until the independent Access and origin validation gates pass.

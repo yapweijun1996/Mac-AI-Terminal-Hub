@@ -25,7 +25,7 @@ Demo metrics, projects, sessions and connected indicators are simulated. The pre
 ### 4.3 Screens
 
 **Overview**
-- MacBook Air host state: `Online`, `Offline`, `Asleep/Unreachable`, or `Unknown` (use evidence; don't infer sleep solely from unreachable).
+- Mac mini host state: `Online`, `Offline`, `Asleep/Unreachable`, or `Unknown` (use evidence; don't infer sleep solely from unreachable).
 - CPU utilization, memory pressure / estimated used memory, disk free, uptime, battery/charging status when exposed safely.
 - Three tool availability tiles: Codex, Claude, Pi with `Installed / Authenticated? / Unknown` (do not infer authentication from binary presence).
 - Recent sessions with `Attach` and last observed activity.

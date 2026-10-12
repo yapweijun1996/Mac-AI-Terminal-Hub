@@ -4,7 +4,7 @@
 
 **Hostname:** `https://terminal.yapweijun1996.com`
 
-**Host:** MacBook Air M4 / 32GB, macOS (verify actual runtime in preflight)
+**Target host:** Mac mini running macOS (verify actual runtime and available resources in preflight)
 
 **Audience:** Single owner; Windows / macOS / mobile browser
 
@@ -16,7 +16,7 @@
 
 ## 1. Objective / 目标
 
-Deliver a secure, low-idle-resource, browser-first control panel that connects to actual interactive Codex CLI, Claude Code CLI, and Pi CLI processes running on the MacBook Air, without requiring Codex Desktop, open inbound ports, or an always-connected browser.
+Deliver a secure, low-idle-resource, browser-first control panel that connects to actual interactive Codex CLI, Claude Code CLI, and Pi CLI processes running on the Mac mini, without requiring Codex Desktop, open inbound ports, or an always-connected browser.
 
 ### Outcomes
 - Access from a standard browser at the exact hostname through Cloudflare Access.
@@ -31,7 +31,7 @@ Deliver a secure, low-idle-resource, browser-first control panel that connects t
 - Full desktop remote control, file explorer/editor, Docker/Kubernetes management, or auto-deploying Git commits.
 - Multi-user collaboration, shared terminal typing, public guest access, and agent cross-machine orchestration.
 - Auto-answering CLI approval prompts, background scheduled job runners, unsandboxed automatic elevated permissions.
-- Guaranteed access when MacBook Air is asleep, logged out, offline, or battery depleted.
+- Guaranteed access when the Mac mini is asleep, logged out, offline, or powered off.
 
 ## 2. Decisions and tradeoffs
 
@@ -39,7 +39,7 @@ Deliver a secure, low-idle-resource, browser-first control panel that connects t
 |---|---|---|
 | Hosting | Native macOS, LaunchAgent | CLI accounts, Keychain, repo filesystem stay local; avoid Docker Desktop overhead |
 | Public entry | `terminal.yapweijun1996.com` only | One protected origin for UI/API/WebSocket |
-| Transport | Dedicated Cloudflare Tunnel *on MacBook Air* | Mac mini's `localhost` is not MacBook Air's localhost; independent failure domain |
+| Transport | Independent Cloudflare Tunnel on Mac mini, not provisioned | Isolate this app from other critical services and existing tunnel routes |
 | Identity | Cloudflare Access allowlist of one exact email; enforced MFA through compatible IdP preferred | Fail closed before the origin; email-only OTP is not equivalent to strong MFA |
 | Frontend | React + TypeScript + Vite (static build) | Maintainable, small production SPA |
 | HTTP API | Fastify on `127.0.0.1:4782` | Same-origin APIs, policy enforcement, observability |
@@ -57,7 +57,7 @@ Deliver a secure, low-idle-resource, browser-first control panel that connects t
 ```mermaid
 flowchart TD
   B[Windows / Mac / Mobile Browser] -->|HTTPS| A[Cloudflare Access: exact email + MFA]
-  A --> T[Cloudflare Tunnel: terminal-mba, WebSocket-capable]
+  A --> T[Dedicated Cloudflare Tunnel on Mac mini, not provisioned]
   T -->|http://127.0.0.1:4782| G[Fastify Gateway / Static UI]
   G -->|HTTPS requests| API[Session / Project / System API]
   G -->|authenticated WS reverse proxy| W[ttyd manager: per-session local endpoint]
@@ -74,7 +74,7 @@ flowchart TD
 
 ### Requests and data flows
 1. Browser navigates to the hostname; Access authenticates the owner.
-2. `cloudflared` on the MacBook Air forwards authorized requests to the single loopback Fastify port.
+2. A separately provisioned `cloudflared` instance on the Mac mini forwards authorized requests to the single loopback Fastify port.
 3. Gateway validates JWT and serves SPA `/`, routes `/api/*`, and proxies `/t/<session-id>/*` including WebSocket upgrade.
 4. Owner selects a registered project + agent. Gateway validates exact project ID, canonical path, allowed root and CLI binary before creating a uniquely named tmux session.
 5. The session manager attaches `ttyd` to this tmux session and proxies its browser terminal path. At most one writer by default (`ttyd -m 1`); an explicit takeover flow may be added later.
@@ -84,8 +84,8 @@ flowchart TD
 ### Why `ttyd` rather than `node-pty` now?
 `ttyd` provides an existing xterm.js-based browser terminal, Unicode/IME support, WebSocket transport, macOS installation, and options such as writable mode `-W`, origin check `-O`, maximum clients `-m`, and proxy base path `-b`. MVP uses its built-in terminal screen inside a same-origin panel. If richer native terminal interactions become necessary, Phase 2 can replace only the bridge with xterm.js + node-pty; keep tmux and API contracts stable.
 
-### Why a separate laptop tunnel?
-The established tunnel on Mac mini operates in Mac mini's process/network namespace; a `127.0.0.1` route there cannot address MacBook Air. Use a distinct named tunnel and hostname route directly on MacBook Air. Do not attach a second Mac to the Mac mini tunnel as an accidental shared-replica setup with heterogeneous origin routes.
+### Tunnel isolation
+The Mac mini runs other critical apps. Provision an independent tunnel for this app only after Access and origin security gates pass. Do not alter, reuse, or attach this app to existing tunnel services during implementation.
 
 ## 4. UI/UX product specification
 
@@ -107,7 +107,7 @@ The established tunnel on Mac mini operates in Mac mini's process/network namesp
 ### 4.3 Screens
 
 **Overview**
-- MacBook Air host state: `Online`, `Offline`, `Asleep/Unreachable`, or `Unknown` (use evidence; don't infer sleep solely from unreachable).
+- Mac mini host state: `Online`, `Offline`, `Asleep/Unreachable`, or `Unknown` (use evidence; don't infer sleep solely from unreachable).
 - CPU utilization, memory pressure / estimated used memory, disk free, uptime, battery/charging status when exposed safely.
 - Three tool availability tiles: Codex, Claude, Pi with `Installed / Authenticated? / Unknown` (do not infer authentication from binary presence).
 - Recent sessions with `Attach` and last observed activity.
@@ -196,7 +196,7 @@ No shell keystrokes, terminal scrollback, API keys, access JWTs, or repo content
 1. Cloudflare **self-hosted HTTP** Access application covers the exact entire hostname, including `/api/*`, `/t/*`, static assets and WebSocket upgrades; no Bypass rules.
 2. Allow rule uses the owner's **exact email address**, not an entire domain. Prefer a Google/other compatible IdP with real MFA. Email OTP can be a fallback but should not be presented as phishing-resistant MFA.
 3. Keep Access session duration short (proposal: 4–8 hours) and require reauthentication for sensitive workflows as needed. Expiry of Access session does not inherently kill a previously established tmux process.
-4. Run `cloudflared` locally on the MacBook Air with a **dedicated Tunnel**, egress-only; no inbound router port forwarding.
+4. Run `cloudflared` locally on the Mac mini with an **independent Tunnel**, egress-only; no inbound router port forwarding. Provision only after explicit integration approval.
 5. App binds `127.0.0.1:4782` only. `ttyd` binds a loopback address or restricted UNIX socket; never `0.0.0.0` or raw public port.
 6. Reject unexpected `Host` values and ensure only the trusted reverse proxy can reach ttyd. Do not publish ttyd ports as additional Cloudflare routes.
 
@@ -310,8 +310,8 @@ Never commit a populated `.env`, credential file, Cloudflare Tunnel token, or CL
 
 | Phase | Work | Exit gate |
 |---|---|---|
-| **P0 — preflight** | Verify CLI binary paths + versions/login state, tmux/ttyd availability, host power/sleep behavior, Git repositories, user context and folder ownership; decide single-user vs dedicated macOS account | Report what is known/unknown; no changes to Mac mini routes |
-| **P1 — protected connectivity** | Prepare public source repository, SPA/gateway, MacBook Air dedicated tunnel, exact hostname DNS, Cloudflare Access owner allowlist/MFA/JWT validation | Unauthenticated external HTTP + WS **denied**; signed valid browser access works; ports loopback only |
+| **P0 — preflight** | Verify CLI binary paths + versions/login state, tmux/ttyd availability, host power/sleep behavior, Git repositories, user context and folder ownership; decide single-user vs dedicated macOS account | Report what is known/unknown; no changes to existing Mac mini routes |
+| **P1 — protected connectivity** | Prepare public source repository, SPA/gateway, independent Mac mini tunnel, exact hostname DNS, Cloudflare Access owner allowlist/MFA/JWT validation | Unauthenticated external HTTP + WS **denied**; signed valid browser access works; ports loopback only |
 | **P2 — core terminal** | Build tmux registry, ttyd manager, same-origin path proxy, 3 agents, project launcher, reconnect | CLI commands really run; reconnect attaches same `tmux` session; second writer rejected; session stop requires confirmation |
 | **P3 — dashboard** | Overview, Project list, Session list, system metrics, mobile controls, settings | 390x844 and 430x932 no horizontal scrolling; actual Mac metrics are labeled/accurate; no false agent-completion statuses |
 | **P4 — hardening & ops** | Metadata audit, CSRF, rate limiting, WebSocket Origin checks, launchd login startup, runbooks, failure injection and dependency review | Security tests pass, unattended tunnel reconnection when host awake, graceful rollback tested |
@@ -357,13 +357,13 @@ Never commit a populated `.env`, credential file, Cloudflare Tunnel token, or CL
 
 - Develop locally at `http://127.0.0.1:4782`; do not map the domain until Access and origin verification are in place.
 - Create the Access self-hosted application with exact hostname + policy **before** publishing the final route; test from a separate unauthenticated browser.
-- Install distinct tunnel from MacBook Air to Gateway. Use `launchd` for login-time startup and crash restart; report that logout/host sleep still interrupt service.
+- Install an independent tunnel from the Mac mini to Gateway only after the security gate and explicit integration approval. Use `launchd` for login-time startup and crash restart; report that logout/host sleep still interrupt service.
 - Release `v0.1.0` only after P1–P4 gates. Keep a previous tagged build and current LaunchAgent template for rollback.
 - To roll back, stop the gateway/tunnel LaunchAgents and/or disable Cloudflare hostname route; existing files remain. Preserve agent sessions only where safe and possible.
 
 ## 11. Task delegation brief (copy to local Codex CLI when ready)
 
-> Build Mac-AI-Terminal-Hub per this spec. First perform read-only P0 preflight, report host paths/versions/security gaps, and do not change the existing Mac mini tunnel. Implement P1–P4 on a feature branch with incremental commits (public repo branches are public). No credential copying, no public anonymous terminals, no root execution, no bypassing Cloudflare Access, no `sh -c` on user-controlled input. Require test evidence for HTTP & WS authorization, reconnect, one-writer sessions, path traversal, mobile QA, and rollback. Do not deploy to the public hostname without explicit owner approval after the security gate.
+> Build Mac-AI-Terminal-Hub per this spec for the Mac mini target host. First perform read-only P0 preflight, report host paths/versions/security gaps, and do not change any existing tunnel or service. Implement P1–P4 on a feature branch with incremental commits (public repo branches are public). No credential copying, no public anonymous terminals, no root execution, no bypassing Cloudflare Access, no `sh -c` on user-controlled input. Require test evidence for HTTP & WS authorization, reconnect, one-writer sessions, path traversal, mobile QA, and rollback. Do not deploy to the public hostname without explicit owner approval after the security gate.
 
 ## 12. Authoritative references (reviewed 2026-10-08)
 

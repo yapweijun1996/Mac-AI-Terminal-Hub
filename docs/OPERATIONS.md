@@ -2,6 +2,8 @@
 
 > Status: design proposal only; not deployed. Public repository / private runtime.
 
+For host test readback, run `scripts/verify-local-integration.sh <private-output-directory>` from this worktree root after the Codex process exits. Use a directory outside the repository with owner-only permissions. Inspect `host-results.json` and bounded per-check logs; only overall `passed` with stable worktree metadata is a successful readback. The receipt explicitly excludes native ttyd and live browser UI proof. The script uses Node.js 24+ and existing dependencies; it performs no installs.
+
 Browser reconnect can reattach to an extant tmux session while the Mac is awake.
 Sleep, logout and restart have different failure modes; never promise uninterrupted availability.
 
@@ -25,6 +27,6 @@ Sleep, logout and restart have different failure modes; never promise uninterrup
 
 - Develop locally at `http://127.0.0.1:4782`; do not map the domain until Access and origin verification are in place.
 - Create the Access self-hosted application with exact hostname + policy **before** publishing the final route; test from a separate unauthenticated browser.
-- Install distinct tunnel from MacBook Air to Gateway. Use `launchd` for login-time startup and crash restart; report that logout/host sleep still interrupt service.
+- Install an independent tunnel from the Mac mini to Gateway only after the security gate and explicit integration approval. Use `launchd` for login-time startup and crash restart; report that logout/host sleep still interrupt service.
 - Release `v0.1.0` only after P1–P4 gates. Keep a previous tagged build and current LaunchAgent template for rollback.
 - To roll back, stop the gateway/tunnel LaunchAgents and/or disable Cloudflare hostname route; existing files remain. Preserve agent sessions only where safe and possible.
