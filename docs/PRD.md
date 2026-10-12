@@ -3,12 +3,12 @@
 > Status: design proposal only; not deployed. Public repository / private runtime.
 
 User: one owner connecting from Windows, macOS, or mobile.
-The service runs on MacBook Air; this public repository hosts source only.
+The service targets the Mac mini; this public repository hosts source only. Older MacBook Air references are obsolete.
 See [UI/UX](UI-UX.md) for detailed screens and states.
 
 ## 1. Objective / 目标
 
-Deliver a secure, low-idle-resource, browser-first control panel that connects to actual interactive Codex CLI, Claude Code CLI, and Pi CLI processes running on the MacBook Air, without requiring Codex Desktop, open inbound ports, or an always-connected browser.
+Deliver a secure, low-idle-resource, browser-first control panel that connects to actual interactive Codex CLI, Claude Code CLI, and Pi CLI processes running on the Mac mini, without requiring Codex Desktop, open inbound ports, or an always-connected browser.
 
 ### Outcomes
 - Access from a standard browser at the exact hostname through Cloudflare Access.
@@ -23,4 +23,4 @@ Deliver a secure, low-idle-resource, browser-first control panel that connects t
 - Full desktop remote control, file explorer/editor, Docker/Kubernetes management, or auto-deploying Git commits.
 - Multi-user collaboration, shared terminal typing, public guest access, and agent cross-machine orchestration.
 - Auto-answering CLI approval prompts, background scheduled job runners, unsandboxed automatic elevated permissions.
-- Guaranteed access when MacBook Air is asleep, logged out, offline, or battery depleted.
+- Guaranteed access when the Mac mini is asleep, logged out, offline, or powered off.

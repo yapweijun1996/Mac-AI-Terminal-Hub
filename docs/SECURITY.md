@@ -13,7 +13,7 @@ See [Public Repository Policy](PUBLIC-REPO-POLICY.md).
 1. Cloudflare **self-hosted HTTP** Access application covers the exact entire hostname, including `/api/*`, `/t/*`, static assets and WebSocket upgrades; no Bypass rules.
 2. Allow rule uses the owner's **exact email address**, not an entire domain. Prefer a Google/other compatible IdP with real MFA. Email OTP can be a fallback but should not be presented as phishing-resistant MFA.
 3. Keep Access session duration short (proposal: 4–8 hours) and require reauthentication for sensitive workflows as needed. Expiry of Access session does not inherently kill a previously established tmux process.
-4. Run `cloudflared` locally on the MacBook Air with a **dedicated Tunnel**, egress-only; no inbound router port forwarding.
+4. Run `cloudflared` locally on the Mac mini with an **independent Tunnel**, egress-only; no inbound router port forwarding. Provision it only after security gates and explicit integration approval.
 5. App binds `127.0.0.1:4782` only. `ttyd` binds a loopback address or restricted UNIX socket; never `0.0.0.0` or raw public port.
 6. Reject unexpected `Host` values and ensure only the trusted reverse proxy can reach ttyd. Do not publish ttyd ports as additional Cloudflare routes.
 
@@ -22,6 +22,20 @@ See [Public Repository Policy](PUBLIC-REPO-POLICY.md).
 8. Validate on **every HTTP route and WebSocket upgrade**, not only page loads. Do not use a client-controlled `email` HTTP header as proof of identity.
 9. For state-changing HTTP: Origin/Referer checks, CSRF token, content-type enforcement, body-size limits, per-user rate limits, and idempotency for `POST /sessions`. No `GET` side effects.
 10. For WebSocket: enforce exact expected `Origin`, validate Access token at upgrade, reject non-allowlisted session IDs, set 1 writer/session, heartbeat and bounded buffers/scrollback. Recheck authorizations at reconnection. Enforce a bounded WebSocket connection lifetime aligned with security policy (on expiry, disconnect the *browser socket* but never silently kill the tmux process). Close live sockets promptly on explicit owner revocation where practical.
+
+Because the browser WebSocket API cannot set Cloudflare Access JWT headers, the gateway exchanges an authenticated same-origin HTTP request for a random, one-time, 30-second, session-scoped WebSocket grant. The upgrade checks exact Origin, grant/session binding, expiry and replay before acceptance. The grant is a narrow transport capability, not a replacement Access identity or reusable session credential. The gateway claims a per-session writer lease, buffers at most 64 KiB during upstream connection, validates a strict UTF-8 hello and replaces its grant before forwarding. Native ttyd startup is intentionally disabled: upstream `--credential` places its secret in process argv, and `--auth-header` only trusts any nonempty proxy header. ttyd documents UDS binding, but compiled libwebsockets UDS support and its native client path are not verified on the target Mac. A private UDS also cannot isolate hostile same-UID processes. Loopback binding alone is not per-user authentication. Native mode returns HTTP 503 until a reviewed, verified per-session transport exists. This source is not deployed.
+
+#### Current threat-test evidence
+
+| Threat | Expected result | Current evidence |
+|---|---|---|
+| Missing Access identity on grant mint | 401 | Existing HTTP security test; local tests cannot run on this sandbox |
+| Cross-origin token mint / WS Origin | 403 | Raw-socket regression test authored; loopback test not executed here (sandbox EPERM) |
+| Missing, malformed, mismatched, or replayed grant | Reject before upstream | Raw-socket regression cases authored; local execution blocked by sandbox |
+| Grant expiry | Reject before upstream | Deterministic clock-shift raw-socket assertion authored; execution blocked by sandbox |
+| Concurrent terminal writers | One writer per session; second gets HTTP 423 | Real-loopback synthetic-upstream assertion authored; loopback execution blocked in this sandbox |
+| Native ttyd authentication | Must have safe per-session auth and no secret argv | Native adapter fails closed; no ttyd process or native listener starts |
+| Input/output leakage | No terminal bytes in gateway logs | Request logging disabled; source review only, no runtime log capture yet |
 11. Security headers: CSP, HSTS at Cloudflare edge, `X-Content-Type-Options: nosniff`, restrictive `Permissions-Policy`; main dashboard `frame-ancestors 'none'`; same-origin embedded ttyd path can use `frame-ancestors 'self'` where needed. Never use permissive global `*` CSP to make terminal work.
 
 ### 6.3 Host command and file safety
@@ -38,3 +52,7 @@ See [Public Repository Policy](PUBLIC-REPO-POLICY.md).
 20. Protect local files and tunnel credentials with file permissions; exclude `.env`, credential caches, data/ and logs/ from Git. Restrict local network users as appropriate.
 21. This **source repository is public**. Never commit credentials, real `.env` values, tokens, local inventories, CLI login stores or logs. Review public PRs for sensitive data and require tests and human approval.
 22. Build a one-command `stop`/rollback path; back up project registry/configuration but never copy authentication tokens into backups.
+
+### Host test receipt
+
+The host-only verifier is `scripts/verify-local-integration.sh <private-output-directory>`. Its Node.js runner uses a fixed executable/argv allowlist, canonical repository root, bounded timeouts/output, private per-check logs, and atomic mode-0600 JSON receipt writes. Do not place receipts or logs in the repository. The run proves only its enumerated checks: synthetic upstream tests and Playwright mock fixtures are not native ttyd or live browser-to-gateway proof. A missing/unreadable/corrupt receipt is a failure, not evidence of passing.

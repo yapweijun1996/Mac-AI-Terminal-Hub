@@ -1,0 +1,24 @@
+{
+  "name": "@terminal-hub/gateway",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "node --env-file=.env --import tsx --watch src/server.ts",
+    "start": "node --env-file=.env dist/src/server.js",
+    "build": "tsc -p tsconfig.json",
+    "test": "tsx --test test/*.test.ts"
+  },
+  "dependencies": {
+    "@fastify/rate-limit": "10.3.0",
+    "@fastify/websocket": "11.2.0",
+    "fastify": "5.12.5",
+    "jose": "6.0.8",
+    "ws": "8.22.0"
+  },
+  "devDependencies": {
+    "@types/node": "22.13.10",
+    "tsx": "4.19.3",
+    "typescript": "5.8.2"
+  }
+}

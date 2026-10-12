@@ -5,7 +5,7 @@ Read [MVP Specification](MVP-SPEC.md), [Security](SECURITY.md), [Architecture](A
 [Test Plan](TEST-PLAN.md), [Public Repo Policy](PUBLIC-REPO-POLICY.md) before changing code.
 
 - Use feature branches and small reviewable commits. Do not merge on behalf of the owner.
-- Start with read-only P0 preflight ON THE ACTUAL MACBOOK AIR. Never assume Mac mini and MacBook Air are interchangeable.
+- Start with read-only P0 preflight on the actual Mac mini target host. Do not alter any existing tunnel or critical service.
 - Implement P1 security protections before enabling any externally accessible terminal.
 - Do not use shell interpolation of browser-controlled strings, auto-approve CLI prompts, or start as root.
 - Require real HTTP, WS, reconnection, path traversal, single-writer, mobile, crash-recovery and rollback evidence.

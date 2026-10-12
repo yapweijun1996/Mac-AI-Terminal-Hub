@@ -10,9 +10,9 @@ See [API](API-CONTRACT.md) and [Security](SECURITY.md).
 
 | Decision | MVP choice | Why |
 |---|---|---|
-| Hosting | Native macOS, LaunchAgent | CLI accounts, Keychain, repo filesystem stay local; avoid Docker Desktop overhead |
+| Hosting | Native macOS on Mac mini, LaunchAgent (planned) | CLI accounts, Keychain, repo filesystem stay local; avoid Docker Desktop overhead |
 | Public entry | `terminal.yapweijun1996.com` only | One protected origin for UI/API/WebSocket |
-| Transport | Dedicated Cloudflare Tunnel *on MacBook Air* | Mac mini's `localhost` is not MacBook Air's localhost; independent failure domain |
+| Transport | Dedicated Cloudflare Tunnel on Mac mini (not provisioned) | Keep this app isolated from existing tunnel routes and services |
 | Identity | Cloudflare Access allowlist of one exact email; enforced MFA through compatible IdP preferred | Fail closed before the origin; email-only OTP is not equivalent to strong MFA |
 | Frontend | React + TypeScript + Vite (static build) | Maintainable, small production SPA |
 | HTTP API | Fastify on `127.0.0.1:4782` | Same-origin APIs, policy enforcement, observability |
@@ -30,7 +30,7 @@ See [API](API-CONTRACT.md) and [Security](SECURITY.md).
 ```mermaid
 flowchart TD
   B[Windows / Mac / Mobile Browser] -->|HTTPS| A[Cloudflare Access: exact email + MFA]
-  A --> T[Cloudflare Tunnel: terminal-mba, WebSocket-capable]
+  A --> T[Dedicated Cloudflare Tunnel on Mac mini, not provisioned]
   T -->|http://127.0.0.1:4782| G[Fastify Gateway / Static UI]
   G -->|HTTPS requests| API[Session / Project / System API]
   G -->|authenticated WS reverse proxy| W[ttyd manager: per-session local endpoint]
@@ -47,7 +47,7 @@ flowchart TD
 
 ### Requests and data flows
 1. Browser navigates to the hostname; Access authenticates the owner.
-2. `cloudflared` on the MacBook Air forwards authorized requests to the single loopback Fastify port.
+2. A separately provisioned `cloudflared` instance on the Mac mini forwards authorized requests to the loopback Fastify port.
 3. Gateway validates JWT and serves SPA `/`, routes `/api/*`, and proxies `/t/<session-id>/*` including WebSocket upgrade.
 4. Owner selects a registered project + agent. Gateway validates exact project ID, canonical path, allowed root and CLI binary before creating a uniquely named tmux session.
 5. The session manager attaches `ttyd` to this tmux session and proxies its browser terminal path. At most one writer by default (`ttyd -m 1`); an explicit takeover flow may be added later.
@@ -57,5 +57,5 @@ flowchart TD
 ### Why `ttyd` rather than `node-pty` now?
 `ttyd` provides an existing xterm.js-based browser terminal, Unicode/IME support, WebSocket transport, macOS installation, and options such as writable mode `-W`, origin check `-O`, maximum clients `-m`, and proxy base path `-b`. MVP uses its built-in terminal screen inside a same-origin panel. If richer native terminal interactions become necessary, Phase 2 can replace only the bridge with xterm.js + node-pty; keep tmux and API contracts stable.
 
-### Why a separate laptop tunnel?
-The established tunnel on Mac mini operates in Mac mini's process/network namespace; a `127.0.0.1` route there cannot address MacBook Air. Use a distinct named tunnel and hostname route directly on MacBook Air. Do not attach a second Mac to the Mac mini tunnel as an accidental shared-replica setup with heterogeneous origin routes.
+### Tunnel isolation
+The target host is the Mac mini. Provision an independent tunnel for this app only after Access and origin checks pass. Do not alter or reuse existing tunnel services or routes during implementation.

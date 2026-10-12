@@ -10,7 +10,7 @@ Deployment requires explicit owner approval and passing external Access tests.
 | Phase | Work | Exit gate |
 |---|---|---|
 | **P0 — preflight** | Verify CLI binary paths + versions/login state, tmux/ttyd availability, host power/sleep behavior, Git repositories, user context and folder ownership; decide single-user vs dedicated macOS account | Report what is known/unknown; no changes to Mac mini routes |
-| **P1 — protected connectivity** | Prepare public source repository, SPA/gateway, MacBook Air dedicated tunnel, exact hostname DNS, Cloudflare Access owner allowlist/MFA/JWT validation | Unauthenticated external HTTP + WS **denied**; signed valid browser access works; ports loopback only |
+| **P1 — protected connectivity** | Prepare public source repository, SPA/gateway, independent Mac mini tunnel, exact hostname DNS, Cloudflare Access owner allowlist/MFA/JWT validation | Unauthenticated external HTTP + WS **denied**; signed valid browser access works; ports loopback only |
 | **P2 — core terminal** | Build tmux registry, ttyd manager, same-origin path proxy, 3 agents, project launcher, reconnect | CLI commands really run; reconnect attaches same `tmux` session; second writer rejected; session stop requires confirmation |
 | **P3 — dashboard** | Overview, Project list, Session list, system metrics, mobile controls, settings | 390x844 and 430x932 no horizontal scrolling; actual Mac metrics are labeled/accurate; no false agent-completion statuses |
 | **P4 — hardening & ops** | Metadata audit, CSRF, rate limiting, WebSocket Origin checks, launchd login startup, runbooks, failure injection and dependency review | Security tests pass, unattended tunnel reconnection when host awake, graceful rollback tested |
